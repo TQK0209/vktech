@@ -1,0 +1,65 @@
+<?php
+function form_node_ajax_add(){
+
+$form = array();
+    $form['title'] = array(
+        '#type' => 'textfield',
+        '#title' => 'Nhập tiêu đề tại đây'
+    );
+    $form['body'] = array(
+        '#type' => 'textarea',
+        '#title' => 'Nội dung bài biết ở đây'
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Đăng bài',
+        '#ajax' => array(
+            'callback' => 'form_node_callback_ajax',
+            'progress' => array('type' => 'throbber'),
+        ),
+);
+    return $form;
+} 
+
+function form_node_callback_ajax($form,$form_state){
+    if(!form_get_error($form))
+    {
+        //Tạo node Social mới
+        global $user;
+        $node = new stdClass(); // We create a new node object
+        $node->title = $form_state['input']['title'];
+        $node->language = 'und';
+        $node -> type = 'social_post';
+        $node -> uid = $user -> uid;
+        $node->body['und'][0]['value'] = $form_state['input']['body'];
+        $newnode = node_submit($node);
+        node_save($newnode);
+        if(isset($newnode->nid)){
+            $node_view = node_view($newnode);
+            $command[]= ajax_command_invoke('.view-node-items-ajax ul' ,'prepend_node_view',array('<li>' . drupal_render($node_view).'</li>'));
+            return array('#type' => 'ajax',"#commands" => $command);
+        }
+      
+    }
+return $form;
+}
+//Hook form vào Page view
+function hoadev_vktech_preprocess_page(&$variables) {
+   $arg= arg(); // Get argument trên thanh địa chỉ
+   if($arg[0] == 'view-social-posts'){
+    $variables['page']['content']['system_main']['form_add_node'] = drupal_get_form('form_node_ajax_add');
+    $views_form = drupal_get_form('form_node_ajax_add');
+    array_unshift($variables['page']['content']['system_main'],$views_form); //Array_unshift để đưa phần tử lên đầu mảng
+    drupal_add_js(drupal_get_path('module','hoadev_vktech') . '/js/node_ajax.js' , array('type' =>'file'));
+}
+  }    
+/**
+ * Implements hook_form_alter().
+ */
+function hoadev_vktech_form_alter(&$form,$form_state, $form_id) {
+    if($form_id == 'form_node_ajax_add'){
+        dsm($form);  
+    }
+
+  
+}

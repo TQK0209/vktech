@@ -1,0 +1,26 @@
+<?php
+/**
+ * Implements hook_requirements().
+ */
+function mnc_entityreference_requirements($phase) {
+  $info =  array(
+    'title' => 'MNC entityreference behavior - supported database',
+    'severity' => REQUIREMENT_ERROR,
+  );
+  switch(db_driver()) {
+    default:
+      $info['value'] = t(
+        'The current database driver (@driver) is not supported.',
+        array('@driver' => db_driver())
+      );
+      break;
+    case 'mysql':
+    case 'pgsql':
+    case 'sqlite':
+    case 'sqlsrv':
+      $info['value'] = t('Supported driver found: @driver', array('@driver' => db_driver()));
+      $info['severity'] = REQUIREMENT_OK;
+      break;
+  }
+  return array('mnc_entityreference' => $info);
+}

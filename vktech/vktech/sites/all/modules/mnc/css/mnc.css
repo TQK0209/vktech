@@ -1,0 +1,64 @@
+.mnc-container .mnc-inner-container {
+  display: none;
+}
+
+.qtip-view .qtip-content {
+  padding-right: 0px;
+}
+
+/**
+.qtip-view .message-view {
+}
+*/
+
+.qtip-view .view-mnc {
+  overflow-x: hidden;
+  overflow-y: scroll;
+  height: 200px;
+}
+
+.message-view .views-row-odd {
+  background-color: #efefef;
+}
+
+.mnc-container .badge {
+  display: inline-block;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+  background: none;
+  border-radius: 10px;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
+  border: 2px solid #aaa;
+  color: #aaa;
+}
+.mnc-container .badge.active {
+  background: #01cee0;
+  background: -moz-linear-gradient(top,  #01cee0 0%, #016fe0 100%);
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#01cee0), color-stop(100%,#016fe0));
+  background: -webkit-linear-gradient(top,  #01cee0 0%,#016fe0 100%);
+  background: -o-linear-gradient(top,  #01cee0 0%,#016fe0 100%);
+  background: -ms-linear-gradient(top,  #01cee0 0%,#016fe0 100%);
+  background: linear-gradient(to bottom,  #01cee0 0%,#016fe0 100%);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#01cee0', endColorstr = '#016fe0', GradientType = 0);
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.mnc-container .badge.medium {
+  font-size: 12px;
+  border: 3px;
+}
+.mnc-container .badge.large {
+  font-size: 14px;
+  border: 4px;
+}
+
+/**
+ * hide the throbber for the use-ajax link - we have another throbber inside of
+ * the view container.
+ */
+.unread-messages .ajax-progress-throbber {
+  display: none;
+}

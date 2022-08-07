@@ -1,0 +1,139 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function csdev_vktech_menu() {
+    $items['api/social-create-post'] = array(
+      'title' => 'vktech social post',
+      'page callback' => '_social_create_post_ajax_callback',
+      'access arguments' => array('access content'),  
+      'type' => MENU_CALLBACK
+    );
+    return $items;
+}
+function _social_create_post_ajax_callback(){
+    if(isset($_POST['content'])){
+        global $user;
+        $profile= user_load($user->uid);
+        $node = new stdClass(); // We create a new node object
+        $node->title = "_";
+        $node->language = 'und';
+        $node -> type = 'social_post';
+        $node -> uid = $user -> uid;
+        $node->body['und'][0]['value'] = $form_state['input']['body'];
+        $newnode = node_submit($node);
+        node_save($newnode);
+        $output = array();
+        $output['author_username'] = $profile->name;
+        $output['author_name'] = $profile->field_full_name['und'][0]['value'];      
+        $output['avatar'] = $profile->picture->uri;
+        $output['post_date'] = $newnode->created;
+        return drupal_json_output($output);
+    }
+}
+
+/**
+ * Hook embed form post bài viết
+ */
+/* function csdev_vktech_preprocess_page(&$variables) {
+    if(user_is_logged_in()){
+        $arg= arg(); // Get argument trên thanh địa chỉ
+        if($arg[0] == 'social'){
+            $views_form = drupal_get_form('form_create_social_post');
+            module_load_include('inc', 'node', 'node.pages');
+            $form = node_add('social_post');
+            //$output = drupal_render($form);
+            array_unshift($variables['page']['content']['system_main'],$form); //Array_unshift để đưa phần tử lên đầu mảng
+            drupal_add_js(drupal_get_path('module','csdev_vktech') . '/js/social_post.js');
+        }
+    }
+}    */
+
+
+function csdev_vktech_node_submit($node, $form, &$form_state) {
+    //dsm($node);
+}
+function csdev_vktech_node_insert($node){
+    if($node->type == 'social_post'){
+        drupal_goto('social');
+    }
+}
+
+/**
+ * Hook embed form post bài viết
+ */
+function form_create_social_post(){
+    $form = array();
+    $form['body'] = array(
+        '#type' => 'textarea',
+        '#title' => 'Nội dung bài biết'
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => 'Đăng bài',
+    );
+    return $form;
+}
+
+function csdev_vktech_comment_view_alter(&$build) {
+    if($build['#bundle'] == 'comment_node_social_post'){
+        //dsm($build);
+        if(isset($build['field_comment_body']['#object']->pid) && $build['field_comment_body']['#object']->pid != 0){
+            //$parent_comment = comment_load($build['field_comment_body']['#object']->pid);
+            $build['links']['comment']['#links']['comment-reply']['href'] = 'comment/reply/'.$build['field_comment_body']['#object']->nid.'/'.$build['field_comment_body']['#object']->pid;
+        }
+    }
+
+    //['links']['comment']['#links']['comment-reply']['href']
+}
+
+/* function csdev_vktech_comment_view(&$comment, $view_mode, $langcode) {
+    //dsm($comment);
+    if($comment->node_type == 'comment_node_social_post'){
+        if(isset($comment->pid) && $comment->pid!= 0){
+            $parent_comment = comment_load($comment->pid);
+        
+            if(isset($parent_comment->pid) && $parent_comment->pid != 0){
+                //dd( $parent_comment->pid );
+                $comment->content['links']['comment']['#links']['comment-reply']['href'] = 'comment/reply/'.$comment->nid.'/'.$parent_comment->pid;
+            }
+        }
+    }
+} */
+
+/**
+ *  hook_comment_insert()
+ * 
+*/
+/* function csdev_vktech_comment_insert($comment) {
+    if($comment->node_type == 'comment_node_social_post'){
+        if(isset($comment->pid) && $comment->pid!= 0){
+            $parent_comment = comment_load($comment->pid);
+            if(isset($parent_comment->pid) && $parent_comment->pid != 0){
+                $comment->pid = $parent_comment->pid;
+                $query = db_query('SELECT COUNT(*) FROM comment WHERE pid = :cid', array(':cid' => $comment->pid));
+                $result = $query->fetchField();
+                $thread = $result-1;
+                if($thread<10){
+                    $thread = sprintf("%02d", $thread);
+                }
+                $comment->thread = (substr($parent_comment->thread, 0, 3)). $thread.'/';
+                comment_save($comment);
+            }
+        }
+    }
+} */
+
+function csdev_vktech_module_implements_alter(&$implementations, $hook) {
+    if ($hook == 'comment_view_alter' && isset($implementations['csdev_vktech'])) {
+      $group = $implementations['csdev_vktech'];
+      unset($implementations['csdev_vktech']);
+      $implementations['csdev_vktech'] = $group;
+    }
+    if ($hook == 'node_insert' && isset($implementations['csdev_vktech'])) {
+        $group = $implementations['csdev_vktech'];
+        unset($implementations['csdev_vktech']);
+        $implementations['csdev_vktech'] = $group;
+    }
+  }

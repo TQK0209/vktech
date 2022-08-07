@@ -1,0 +1,9 @@
+<?php
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function mnc_notify_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'message_notify') {
+    return $module . '/' . $plugin;
+  }
+}

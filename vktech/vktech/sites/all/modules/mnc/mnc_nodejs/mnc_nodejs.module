@@ -1,0 +1,62 @@
+<?php
+/**
+ * @file
+ * Code for Node.js integration
+ */
+
+/**
+ * Implements hook_nodejs_user_channels().
+ */
+/*
+ * we do not need to add our own user channel since nodejs module provides one.
+function mnc_nodejs_nodejs_user_channels($account) {
+  // Create a channel for each authenticated user.
+  if ($account->uid > 0) {
+    return array('mnc_nodejs_' . $account->uid);
+  }
+}*/
+
+/**
+ * Sends a counter update: +1.
+ *
+ * @param object $account
+ *   A Drupal user object e.g. from user_load(1)
+ * @param object $message
+ *   The message entitiy that is new
+ */
+function mnc_nodejs_send_counter_add($account, $message) {
+  $nodejs_message = new stdClass();
+  $nodejs_message->channel = 'nodejs_user_' . $account->uid;
+  $nodejs_message->broadcast = FALSE;
+  $nodejs_message->callback = 'mnc_nodejs_counter_add';
+  // $nodejs_message->data = 'some data here? maybe to provide a full counter?';
+  drupal_alter('mnc_nodejs_send_counter_add', $nodejs_message);
+  nodejs_send_message($nodejs_message);
+}
+
+/**
+ * Sends a counter update: -1.
+ *
+ * @param object $account
+ *   A Drupal user object e.g. from user_load(1)
+ * @param object $message
+ *   The message entitiy that is new
+ */
+function mnc_nodejs_send_counter_sub($account, $message) {
+  $nodejs_message = new stdClass();
+  $nodejs_message->channel = 'nodejs_user_' . $account->uid;
+  $nodejs_message->broadcast = FALSE;
+  $nodejs_message->callback = 'mnc_nodejs_counter_sub';
+  // $nodejs_message->data = 'some data here? maybe to provide a full counter
+  drupal_alter('mnc_nodejs_send_counter_sub', $nodejs_message);
+  nodejs_send_message($nodejs_message);
+}
+
+/**
+ * Implements hook_nodejs_handlers_info().
+ */
+function mnc_nodejs_nodejs_handlers_info() {
+  return array(
+    drupal_get_path('module', 'mnc_nodejs') . '/nodejs.mnc_nodejs.js',
+  );
+}

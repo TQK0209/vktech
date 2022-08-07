@@ -1,0 +1,6 @@
+name = SOCIAL POST by khánh
+description = Thực hiện chức năng đăng bài trong vktech.network
+package = HKT - Team
+core = 7.x
+version = "7.x-1.0"
+project = "social-post"

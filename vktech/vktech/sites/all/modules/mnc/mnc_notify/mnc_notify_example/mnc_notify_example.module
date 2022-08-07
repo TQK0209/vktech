@@ -1,0 +1,56 @@
+<?php
+/**
+ * Implements hook_comment_insert().
+ *
+ * Send a message to the node author when a new comment is created.
+ */
+function mnc_notify_example_comment_insert($comment) {
+  $node = node_load($comment->nid);
+  if ($comment->uid == $node->uid) {
+    // The comment author is also the node author, and we would ususally
+    // return early here, but since this is an example, we send an email
+    // anyway.
+  }
+
+  // Create a new message, assigned to the node author, and add a
+  // reference to the comment, so we can later use tokens related to that
+  // comment.
+  $message = message_create('example_create_comment', array('uid' => $node->uid));
+  $wrapper = entity_metadata_wrapper('message', $message);
+  $wrapper->field_comment_ref->set($comment);
+  $wrapper->field_node_ref->set($comment->nid);
+
+  // Let message-notify deliver the email, and send the message for us.
+  // We pass in the options the field names, that will be used to capture
+  // the rendered message, and provide an email log.
+  // $options = array(
+  //  'rendered fields' => array(
+  //    'message_notify_email_subject' => 'field_message_rendered_subject',
+  //    'message_notify_email_body' => 'field_message_rendered_body',
+  //  ),
+  //);
+
+  // Since we did not extend the example message with the mnc_recipients
+  // field we provide a list of users as options
+  $options['mnc_recipients'] = array(
+    array(
+      'user' => user_load(1),
+    ),
+  );
+
+  // add the node author as recipient
+  if ($node->uid != 1) {
+    $options['mnc_recipients'][] = array(
+      'user' => user_load($node->uid),
+    );
+  }
+
+  // add the comment author as well, get some sample users in.
+  if ($comment->uid != $node->uid) {
+    $options['mnc_recipients'][] = array(
+      'user' => user_load($comment->uid),
+    );
+  }
+
+  message_notify_send_message($message, $options, 'mnc_email');
+}

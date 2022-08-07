@@ -1,0 +1,10 @@
+name = Comment Reply Count
+description = Toggles the display of comment replies with the count of total number of the replies to that comment.
+core = '7.x'
+dependencies[] = comment
+
+; Information added by Drupal.org packaging script on 2018-06-13
+version = "7.x-1.0"
+core = "7.x"
+project = "comment_reply_count"
+datestamp = "1528871321"

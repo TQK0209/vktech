@@ -1,0 +1,12 @@
+name = Message Notification Center entityreference behavior
+description = This module extends entityreference by a new behavior to store a date along the target_id
+core = 7.x
+package = Message
+dependencies[] = mnc
+configure = admin/config/mnc
+
+; Information added by Drupal.org packaging script on 2021-03-25
+version = "7.x-1.1"
+core = "7.x"
+project = "mnc"
+datestamp = "1616693415"

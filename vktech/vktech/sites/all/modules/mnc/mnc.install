@@ -1,0 +1,94 @@
+<?php
+/**
+ * @file
+ * Installation hooks for the module.
+ */
+
+/**
+ * Implements hook_schema()
+ */
+function mnc_schema() {
+  // Cache bins for mnc module.
+  $cache_schema = drupal_get_schema_unprocessed('system', 'cache');
+  $types = array(
+    'mnc',
+  );
+  foreach ($types as $type) {
+    $schema["cache_$type"] = $cache_schema;
+    $schema["cache_$type"]['description'] = "Cache table used to store $type records.";
+  }
+  return $schema;
+}
+
+/**
+ * Implements hook_schema_alter().
+ */
+function mnc_schema_alter(&$schema) {
+  $schema['message']['fields']['read_status'] = array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'size' => 'tiny',
+    'description' => 'The read status of the message.',
+  );
+  $schema['message']['fields']['notification'] = array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'size' => 'tiny',
+    'description' => 'The message has a notification.',
+  );
+  $schema['indexes']['read_status'] = array('read_status');
+  $schema['indexes']['notification'] = array('notification');
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function mnc_install() {
+  $schema['message'] = array();
+  mnc_schema_alter($schema);
+  foreach ($schema['message']['fields'] as $name => $spec) {
+    db_add_field('message', $name, $spec);
+  }
+
+  foreach ($schema['indexes'] as $index => $fields) {
+    db_add_index('message', $index, $fields);
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function mnc_uninstall() {
+  $schema['message'] = array();
+  mnc_schema_alter($schema);
+
+  foreach ($schema['indexes'] as $index => $fields) {
+    db_drop_index('message', $index);
+  }
+
+  foreach ($schema['message']['fields'] as $name => $spec) {
+    db_drop_field('message', $name);
+  }
+}
+
+/**
+ * Create cache bins for mnc module.
+ */
+function mnc_update_7001() {
+  $cache_schema = drupal_get_schema_unprocessed('system', 'cache');
+  $types = array(
+    'mnc',
+  );
+  foreach ($types as $type) {
+    $schema["cache_$type"] = $cache_schema;
+    $schema["cache_$type"]['description'] = "Cache table used to store $type records.";
+  }
+  foreach ($schema as $name => $table_schema) {
+    // On a fresh installation the table will be already present.
+    if (!db_table_exists($name)) {
+      db_create_table($name, $table_schema);
+    }
+  }
+}

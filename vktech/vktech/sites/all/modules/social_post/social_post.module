@@ -1,0 +1,30 @@
+<?php 
+function _form_social_post_add(){
+	$form = array();
+	$form['title'] = array(
+		'#type' => 'textfield',
+		'#title' => 'Title of note',
+	);
+	$form['body'] = array(
+		'#type' => 'textarea',
+		'#title' => 'Description of note',
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#title' => 'Sbmit note',
+	);
+	return $form;
+}
+function social_post_views_pre_view(&$view, &$display_id, &$args) {
+// dsm(views_get_view('social')); //Hoà CMT
+if($view->name=='social'){
+	$view->display['block']->display_options['header'] == '<h1>tuancs</h1>';
+	}
+  // Change the display if the acting user has 'administer site configuration'
+  // permission, to display something radically different.
+  // (Note that this is not necessarily the best way to solve that task. Feel
+  // free to contribute another example!)
+  if ($view->name == 'social' && user_access('administer site configuration') && $display_id == 'public_display') {
+    $view->set_display('private_display');
+  }
+}

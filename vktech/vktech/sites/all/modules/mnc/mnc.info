@@ -1,0 +1,30 @@
+name = Message Notification Center
+description = This module provides a read / unread status for message and add a ajax view for opening up a notification stream.
+core = 7.x
+package = Message
+dependencies[] = ctools
+dependencies[] = entity
+dependencies[] = entityreference
+dependencies[] = flag (3.x)
+dependencies[] = message
+dependencies[] = strongarm
+dependencies[] = variable
+dependencies[] = views
+dependencies[] = views_load_more
+dependencies[] = waypoints
+configure = admin/config/system/mnc
+features[ctools][] = strongarm:strongarm:1
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:2
+features[field_base][] = field_mnc_recipients
+features[field_instance][] = message-user_notification_center-field_mnc_recipients
+features[flag][] = mnc_read_message
+features[message_type][] = user_notification_center
+features[variable][] = field_bundle_settings_message__user_notification_center
+features[views_view][] = mnc
+
+; Information added by Drupal.org packaging script on 2021-03-25
+version = "7.x-1.1"
+core = "7.x"
+project = "mnc"
+datestamp = "1616693415"

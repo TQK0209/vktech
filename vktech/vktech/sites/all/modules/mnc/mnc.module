@@ -1,0 +1,910 @@
+<?php
+/**
+ * @file
+ * Code for the Message Notification Center feature.
+ */
+
+include_once 'mnc.features.inc';
+
+/**
+ * Implements hook_menu().
+ */
+function mnc_menu() {
+  $items['mnc/ajax/block/%'] = array(
+    'page callback' => 'mnc_ajax_block',
+    'page arguments' => array(3),
+    'access arguments' => array('access message notification center'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['mnc/ajax/read'] = array(
+    'page callback' => 'mnc_ajax_mark_read',
+    'delivery callback' => 'mnc_ajax_array_json_callback',
+    'access arguments' => array('access message notification center'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['mnc/ajax/unread'] = array(
+    'page callback' => 'mnc_ajax_mark_unread',
+    'delivery callback' => 'mnc_ajax_array_json_callback',
+    'access arguments' => array('access message notification center'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['mnc/ajax/all-read'] = array(
+    'page callback' => 'mnc_ajax_mark_all_read',
+    'delivery callback' => 'mnc_ajax_array_json_callback',
+    'access arguments' => array('mark own messages read'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['mnc/ajax/all-unread'] = array(
+    'page callback' => 'mnc_ajax_mark_all_unread',
+    'delivery callback' => 'mnc_ajax_array_json_callback',
+    'access arguments' => array('access message notification center'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['mnc/ajax/unread-count'] = array(
+    'page callback' => 'mnc_ajax_unread_count',
+    'delivery callback' => 'mnc_ajax_array_json_callback',
+    'access arguments' => array('access message notification center'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/config/system/mnc'] = array(
+    'title' => 'Message Notification Center',
+    'description' => 'Configure extended options for the notification center',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('variable_module_form', 'mnc'),
+    'access arguments' => array('administer site configuration'),
+    'weight' => 10,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function mnc_permission() {
+  return array(
+    'access message notification center' => array(
+      'title' => t('access message notification center'),
+      'description' => t('access message notification center'),
+    ),
+    'mark own messages read' => array(
+      'title' => t('mark own messages read'),
+      'description' => t('mark own messages read'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_variable_info().
+ */
+function mnc_variable_info($options) {
+  $variable['mnc_link_inner_prefix'] = array(
+    'title' => t('The inner prefix of the messages unread link'),
+    'description' => t('content is run through t(). this can be useful for removing the text and using only an icon.'),
+    'type' => 'string',
+    'default' => 'unread messages',
+  );
+  $variable['mnc_include_anonymous_messages'] = array(
+    'title' => t('Include anonymous messages (uid = 0) for all users?'),
+    'type' => 'number',
+    'element' => array(
+      '#type' => 'checkbox',
+      '#title' => t('Include anonymous messages (uid = 0) for all users?'),
+      '#description' => t("this can be useful if you want to send messages to
+        all users. Note: the read status will not be changed during viewing,
+        in order to change it and also dismiss it's notification count you
+        will have to edit that message."),
+    ),
+    'default' => 0,
+  );
+  $variable['mnc_qtip_classes'] = array(
+    'title' => t('The classes used for the qtip'),
+    'type' => 'string',
+    'default' => 'qtip-light qtip-shadow',
+  );
+  $variable['mnc_qtip_width'] = array(
+    'title' => t('The width used for the qtip'),
+    'description' => t('Please note that you will have to adjust the .qtip {max-width} in css too!'),
+    'type' => 'number',
+    'default' => 350,
+  );
+  $variable['mnc_view'] = array(
+    'title' => t('The machine name of the view being used'),
+    'description' => t('The view may contain multiple displays, you are able to select the display to use on the configuration page. Make sure to implement any logic from mnc_preprocess_views_view() and mnc_views_pre_build()'),
+    'type' => 'string',
+    'default' => 'mnc',
+  );
+  $variable['mnc_view_display'] = array(
+    'title' => t('The display used'),
+    'type' => 'string',
+    'element' => array(
+      '#type' => 'select',
+      '#title' => t('the display used'),
+      // Will be inserted by
+      // mnc_form_variable_module_form_alter().
+      '#options' => array(),
+      '#description' => t('Change it back to master if you switch views'),
+    ),
+    'default' => 'messages',
+  );
+
+  $variable['mnc_view_display_unread'] = array(
+    'title' => t('The display used for unread messages'),
+    'type' => 'string',
+    'element' => array(
+      '#type' => 'select',
+      '#title' => t('the display used for unread messages'),
+      // Will be inserted by
+      // mnc_form_variable_module_form_alter().
+      '#options' => array(),
+      '#description' => t('Change it back to master if you switch views'),
+    ),
+    'default' => 'messages_unread',
+  );
+
+  $variable['mnc_view_display_notifications_unread'] = array(
+    'title' => t('The display used for unread notification messages'),
+    'type' => 'string',
+    'element' => array(
+      '#type' => 'select',
+      '#title' => t('the display used for unread notification messages'),
+      // Will be inserted by
+      // mnc_form_variable_module_form_alter().
+      '#options' => array(),
+      '#description' => t('Change it back to master if you switch views'),
+    ),
+    'default' => 'notification_unread',
+  );
+
+  $variable['mnc_count_callback'] = array(
+    'title' => t('The callback function used for populating the notification icon'),
+    'type' => 'string',
+    'default' => 'mnc_count_unread',
+    'description' => t("The callback function gets a user object passed.
+      To limit the count to only unread notifications, instead of unread
+      messages use: mnc_count_unread_notifications"),
+  );
+  $variable['mnc_flag'] = array(
+    'title' => t('The flag machine name to be used for marking read messages'),
+    'type' => 'string',
+    'default' => 'mnc_read_message',
+  );
+  $variable['mnc_cache_lifetime_count_unread'] = array(
+    'title' => t('The cache lifetime for the unread count, use 0 for no cache. (seconds)'),
+    'type' => 'number',
+    'default' => 30,
+    'description' => t("When using poll mode be aware that this value should
+      be lower than the actual polling time."),
+  );
+  $variable['mnc_expire_seconds'] = array(
+    'title' => t('The client side cache lifetime for the unread count, use 0 for no cache. (seconds)'),
+    'type' => 'number',
+    'default' => 60,
+  );
+
+  $variable['mnc_refresh_interval'] = array(
+    'title' => t('The client side refresh interval for the unread count. Only used with modernzir and if localstorage is available (seconds)'),
+    'type' => 'number',
+    'default' => 5,
+    'description' => t("If a user has modernizr enabled and uses multiple tabs, the refreshing takes care of updating the count if another tab changed the localstorage. Use 0 for no refreshing."),
+  );
+
+  $variable['mnc_refresh_interval_poll'] = array(
+    'title' => t('The client side refresh interval for the unread count. Used if modernzir and/ or localstorage is not available (seconds)'),
+    'type' => 'number',
+    'default' => 60,
+    'description' => t("Use 0 for no additional polling."),
+  );
+
+  return $variable;
+}
+
+/**
+ * Populates the available displays for the variable/ configuration form.
+ *
+ * Implements hook_form_alter().
+ */
+function mnc_form_variable_module_form_alter(&$form, &$form_state) {
+  $view = views_get_view(variable_get_value('mnc_view'));
+  $options = array();
+  foreach ($view->display as $key => $display) {
+    $options[$key] = $display->display_title;
+  }
+  $form['mnc_view_display']['#options'] = $options;
+  $form['mnc_view_display_unread']['#options'] = $options;
+  $form['mnc_view_display_notifications_unread']['#options'] = $options;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function mnc_block_info() {
+  $blocks['mnc'] = array(
+    'info' => t('Message Notification Center: block with unread count and message list in a popup div'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_entity_property_info().
+ */
+function mnc_entity_property_info_alter(&$info) {
+  // Set the controller class for nodes to an alternate implementation of the
+  // DrupalEntityController interface.
+  $info['message']['properties']['notification']['getter callback'] = 'entity_property_verbatim_get';
+  $info['message']['properties']['notification']['setter callback'] = 'entity_property_verbatim_set';
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function mnc_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'mnc':
+      if (user_access('access message notification center')) {
+        $block['subject'] = t('Unread messages');
+        $build = array(
+          '#theme' => 'mnc',
+        );
+        mnc_add_js();
+        drupal_add_library('system', 'drupal.ajax');
+        $block['content'] = $build;
+      }
+      break;
+  }
+  return $block;
+}
+
+/**
+ * Callback function for displaying a message notification block.
+ *
+ * @param string $ajax
+ *   Determines whether block is called by ajax or through usual page rendering.
+ *
+ * @return string
+ *   TODO: What is returned?
+ */
+function mnc_ajax_block($ajax = 'ajax') {
+  $is_ajax = $ajax === 'ajax';
+  global $user;
+  $build = array(
+    '#theme' => 'mnc_ajax',
+    '#view' => views_embed_view(variable_get_value('mnc_view'), variable_get_value('mnc_view_display'), $user->uid),
+  );
+
+  if ($is_ajax) {
+    $rendered_build = drupal_render($build);
+    // Order of commands is important, if we dont change settings _before_
+    // replacing content the attached behaviours will still use
+    // the old settings.
+    $commands = mnc_add_js_setting_unread_count(TRUE);
+    $commands[] = ajax_command_replace('.message-view', $rendered_build);
+
+    $ajax = array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+    ajax_deliver($ajax);
+
+  }
+  else {
+    $markup = drupal_render($build);
+    mnc_add_js_setting_unread_count();
+    return $markup;
+
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function mnc_theme($existing, $type, $theme, $path) {
+  return array(
+    'mnc' => array(
+      'variables' => array(
+        'link_inner_prefix' => variable_get_value('mnc_link_inner_prefix'),
+        'unread_messages_indicator' => 'mnc-unread-messages-indicator',
+        'callback_url' => url('mnc/ajax/block/nojs'),
+      ),
+      'template'  => 'mnc',
+    ),
+    'mnc_ajax' => array(
+      'variables' => array('view' => NULL),
+      'template' => 'mnc_ajax',
+    ),
+  );
+}
+
+/**
+ * Implements hook_preprocess_message().
+ *
+ * Adds a message-is-read or message-is-unread class to the
+ * variables array for a message template.
+ */
+function mnc_preprocess_message(&$variables) {
+  if (user_is_logged_in()) {
+    global $user;
+    if (mnc_is_read($variables['message'], $user)) {
+      $variables['classes_array'][] = 'message-is-read';
+    }
+    else {
+      $variables['classes_array'][] = 'message-is-unread';
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_views_view().
+ *
+ * Marks all fetched messages read.
+ */
+function mnc_preprocess_views_view(&$variables) {
+  if ($variables['view']->name == 'mnc') {
+    foreach ($variables['view']->result as $message) {
+      mnc_mark_read($variables['user'], $message->mid);
+    }
+  }
+}
+
+/**
+ * Implements hook_views_pre_execute().
+ *
+ * For views listing unread contents set the current_page always
+ * to 0 because it's contents change.
+ */
+function mnc_views_pre_execute(&$view) {
+  if ($view->name == 'mnc') {
+    if ($view->current_display == 'messages_unread' || $view->current_display == 'notifications_unread') {
+      $display = variable_get_value('mnc_view_display');
+      if ($display == 'messages_unread' || $display == 'notifications_unread') {
+        $view->query->pager->current_page = 0;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_views_pre_build().
+ *
+ * If mnc_include_anonymous_messages is checked
+ * make sure there's a 0+ in the arguments of the messages view
+ */
+function mnc_views_pre_build(&$view) {
+  if ($view->name == 'mnc') {
+    if (variable_get_value('mnc_include_anonymous_messages')) {
+      // Include anonymous user recipients messages.
+      if (isset($view->args[0]) && FALSE === strpos($view->args[0], '0+')) {
+        $view->set_arguments(array('0+' . $view->args[0]));
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_views_ajax_data_alter().
+ *
+ * Send the current unread count along with the new items
+ * from views_load_more pager.
+ */
+function mnc_views_ajax_data_alter(&$commands, $view) {
+  if ($view->name == variable_get_value('mnc_view')) {
+    global $user;
+    $callback = variable_get_value('mnc_count_callback');
+    $setting['mnc']['unread_count'] = call_user_func($callback, $user);
+    array_unshift($commands, ajax_command_settings($setting, TRUE));
+  }
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function mnc_libraries_info() {
+  $libraries['qtip2'] = array(
+    'name' => 'qtip2',
+    'vendor url' => 'http://qtip2.com/',
+    'download url' => 'http://qtip2.com/download',
+    'files' => array(
+      'js' => array(
+        'jquery.qtip.min.js',
+      ),
+      'css' => array(
+        'jquery.qtip.min.css',
+      ),
+    ),
+    'version arguments' => array(
+      'file' => 'jquery.qtip.min.js',
+      'pattern' => '@qTip2.*v([d\.d\.\d]+)@',
+      'lines' => 5,
+    ),
+    'variants' => array(
+      'minified' => array(
+        'files' => array(
+          'js' => array(
+            'jquery.qtip.min.js',
+          ),
+          'css' => array(
+            'jquery.qtip.min.css',
+          ),
+        ),
+      ),
+      'source' => array(
+        'files' => array(
+          'js' => array(
+            'jquery.qtip.js',
+          ),
+          'css' => array(
+            'jquery.qtip.css',
+          ),
+        ),
+      ),
+    ),
+  );
+  return $libraries;
+}
+
+/**
+ * Adds required javascript libraries to the page.
+ *
+ * also provides hooks for you to alter data:
+ * hook_mnc_js_alter
+ * hook_mnc_css_alter
+ * hook_mnc_libraries_alter
+ */
+function mnc_add_js() {
+  if (user_is_logged_in()) {
+    $module_path = drupal_get_path('module', 'mnc');
+    // We have to load the views_load_more.js before the mnc.js to be able
+    // to override their Drupal behaviors.
+    $views_load_more = drupal_get_path('module', 'views_load_more') . '/views_load_more.js';
+    $js = array(
+      array($views_load_more, 'file'),
+      array($module_path . '/js/mnc.js', 'file'),
+      array(
+        array(
+          'mnc' => array(
+            'view' => variable_get_value('mnc_view'),
+            'view_css_selector' => '.view-' . str_replace('_', '-', variable_get_value('mnc_view')),
+            'qtip_classes' => variable_get_value('mnc_qtip_classes'),
+            'qtip_width' => variable_get_value('mnc_qtip_width'),
+            'expire_seconds' => variable_get_value('mnc_expire_seconds'),
+            'refresh_interval' => variable_get_value('mnc_refresh_interval'),
+            'refresh_interval_poll' => variable_get_value('mnc_refresh_interval_poll'),
+          ),
+        ),
+        'setting',
+      ),
+    );
+
+    $css = array(
+      array($module_path . '/css/mnc.css', 'file'),
+    );
+
+    // Try to load the qtip2 library.
+    if (!function_exists('libraries_load') || (!$library = libraries_load('qtip2')) || $library['loaded'] == FALSE) {
+      // We do not have a library, use our patched one.
+      $js[] = array($module_path . '/js/jquery.qtip.custom/jquery.qtip.jscompress.com.min.js');
+      // $js[] = array($module_path . '/js/jquery.qtip.custom/jquery.qtip.js');
+      $css[] = array($module_path . '/js/jquery.qtip.custom/jquery.qtip.min.css');
+    }
+
+    $libraries = array();
+    if (module_exists('waypoints')) {
+      $libraries[] = array('waypoints', 'waypoints');
+    }
+
+    drupal_alter('mnc_js', $js);
+    foreach ($js as $arguments) {
+      call_user_func_array('drupal_add_js', $arguments);
+    }
+
+    drupal_alter('mnc_css', $css);
+    foreach ($css as $arguments) {
+      call_user_func_array('drupal_add_css', $arguments);
+    }
+
+    drupal_alter('mnc_libraries', $libraries);
+    foreach ($libraries as $arguments) {
+      call_user_func_array('drupal_add_library', $arguments);
+    }
+  }
+}
+
+/**
+ * Adds the unread count for the global user in the Drupal.settings array.
+ *
+ * Setting: Drupal.settings.mnc.unread_count.
+ *
+ * @param bool $ajax
+ *   Determine whether this is called through ajax or as a usual page request.
+ *
+ * @return array
+ *   TODO: What is returned?
+ */
+function mnc_add_js_setting_unread_count($ajax = FALSE) {
+  global $user;
+  $callback = variable_get_value('mnc_count_callback');
+  $setting['mnc']['unread_count'] = call_user_func($callback, $user);
+  if ($ajax) {
+    $commands[] = ajax_command_settings($setting, TRUE);
+    return $commands;
+  }
+  else {
+    drupal_add_js($setting, 'setting');
+  }
+}
+
+/**
+ * Callback for ajax unread count.
+ */
+function mnc_ajax_unread_count() {
+  global $user;
+  $callback = variable_get_value('mnc_count_callback');
+  $unread_count = call_user_func($callback, $user);
+  return array('unread' => $unread_count);
+}
+
+/**
+ * Updates a message read status to read.
+ *
+ * Internally flags a message to be read.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ *
+ * @param int $message_id
+ *   Message ID.
+ */
+function mnc_mark_read($user, $message_id) {
+  $flag = flag_get_flag(variable_get_value('mnc_flag'))
+    or die('no "' . variable_get_value('mnc_flag') . '" flag defined');
+  $flag->flag('flag', $message_id, $user);
+  if (module_exists('rules')) {
+    rules_invoke_event('mnc_mark_read', $user, $message_id);
+  }
+}
+
+/**
+ * Updates a message read status to unread.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ *
+ * @param int $message_id
+ *   Message ID.
+ */
+function mnc_mark_unread($user, $message_id) {
+  $flag = flag_get_flag(variable_get_value('mnc_flag'))
+    or die('no "' . variable_get_value('mnc_flag') . '" flag defined');
+  $flag->flag('unflag', $message_id, $user);
+  if (module_exists('rules')) {
+    rules_invoke_event('mnc_mark_read', $user, $message_id);
+  }
+}
+
+/**
+ * Updates all message unread status to read.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ * @param bool $first_page_only
+ *   only mark the first page of views results, rather than all notifications.
+ *
+ * @todo: this method is highly inefficient. Takes SECONDS to mark hundreds of
+ *   messages. probably need to provide some sort of feedback (throbber, etc.)
+ *   to the user. could potentially be improved by going to the db directly
+ *   rather than executing a view and then flagging each item individually, but
+ *   we would lose flexibility in the process.
+ *
+ * @return object
+ *   returns the view which was used for selecting all unread messages
+ */
+function mnc_mark_all_read($user, $first_page_only = FALSE) {
+  $view = views_get_view(variable_get_value('mnc_view'));
+  if (!$first_page_only) {
+    // Mark all notifications for this user, not just the first page of results.
+    $view->items_per_page = 0;
+  }
+  $view->set_display(variable_get_value('mnc_view_display_unread'));
+  $view->set_arguments(array($user->uid));
+  $view->pre_execute();
+  $view->execute();
+  $flag = flag_get_flag(variable_get_value('mnc_flag'))
+    or die('no "' . variable_get_value('mnc_flag') . '" flag defined');
+  foreach ($view->result as $message) {
+    $flag->flag('flag', $message->mid, $user);
+  }
+  if (module_exists('rules')) {
+    rules_invoke_event('mnc_mark_all_read', $user);
+  }
+  return $view;
+}
+
+/**
+ * Updates all message read status to unread.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ * @param bool $first_page_only
+ *   only mark the first page of views results, rather than all notifications.
+ *
+ * @todo: this method is highly inefficient. Takes SECONDS to mark hundreds of
+ *   messages. probably need to provide some sort of feedback (throbber, etc.)
+ *   to the user. could potentially be improved by going to the db directly
+ *   rather than executing a view and then flagging each item individually, but
+ *   we would lose flexibility in the process.
+ *
+ * @return object
+ *   the view beeing used for the read messages "mnc_view"
+ */
+function mnc_mark_all_unread($user, $first_page_only = FALSE) {
+  $view = views_get_view(variable_get_value('mnc_view'));
+  if (!$first_page_only) {
+    // Mark all notifications for this user, not just the first page of results.
+    $view->items_per_page = 0;
+  }
+  $view->set_display(variable_get_value('mnc_view_display'));
+  $view->set_arguments(array($user->uid));
+  $view->pre_execute();
+  $view->execute();
+  $flag = flag_get_flag(variable_get_value('mnc_flag'))
+    or die('no "' . variable_get_value('mnc_flag') . '" flag defined');
+  foreach ($view->result as $message) {
+    $flag->flag('unflag', $message->mid, $user);
+  }
+  if (module_exists('rules')) {
+    rules_invoke_event('mnc_mark_all_unread', $user);
+  }
+  return $view;
+}
+
+/**
+ * Check if the message is read by a specific user.
+ *
+ * @param message $message
+ *   Message to mark read.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ */
+function mnc_is_read($message, $user) {
+  if (!isset($message->mid) || !isset($user->uid)) {
+    return FALSE;
+  }
+  $flag = flag_get_flag(variable_get_value('mnc_flag'))
+    or die('no "' . variable_get_value('mnc_flag') . '" flag defined');
+  return $flag->is_flagged($message->mid, $user->uid);
+}
+
+/**
+ * Function to count all unread messages of a user.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ * @param bool $refresh
+ *   Request a fresh result rather than using cache
+ *
+ * @return int
+ *   Number of unread messages.
+ */
+function mnc_count_unread($user, $refresh = FALSE) {
+  $cache_key = 'mnc_count_unread:' . $user->uid;
+  $cache = cache_get($cache_key, 'mnc');
+  if (
+    !$refresh &&
+    variable_get_value('mnc_cache_lifetime_count_unread') > 0 &&
+    $cache &&
+    (time() < $cache->expire)
+  ) {
+    return $cache->data;
+  }
+  else {
+    /*
+     * Build the view with needed configuration but dont execute it usually
+     * instead take the count_query object and execute that. This is done to
+     * achieve a performance benefit.
+     */
+    $view = views_get_view(variable_get_value('mnc_view'));
+    $view->set_display(variable_get_value('mnc_view_display_unread'));
+
+    if (variable_get_value('mnc_include_anonymous_messages')) {
+      // Include anonymous user recipients messages.
+      $view->set_arguments(array('0+' . $user->uid));
+    }
+    else {
+      $view->set_arguments(array($user->uid));
+    }
+    $view->build(variable_get_value('mnc_view_display_unread'));
+    $count = _mnc_get_total_items($view);
+
+    cache_set($cache_key, $count, 'cache_mnc', time() + variable_get_value('mnc_cache_lifetime_count_unread'));
+    return $count;
+  }
+}
+
+/**
+ * Clear/ Update caches for message counts.
+ *
+ * Implements hook_message_insert().
+ */
+function mnc_message_insert($message) {
+  if (isset($message->field_mnc_recipients[LANGUAGE_NONE])) {
+    foreach ($message->field_mnc_recipients[LANGUAGE_NONE] as $field) {
+      if (isset($field['target_id']) && is_numeric($field['target_id'])) {
+        $cache_key = 'mnc_count_unread:' . $field['target_id'];
+        $cache = cache_get($cache_key, 'mnc');
+        if (
+          variable_get_value('mnc_cache_lifetime_count_unread') > 0 &&
+          $cache &&
+          (time() < $cache->expire)
+        ) {
+          $count = $cache->data;
+          $count = $count + 1;
+          cache_set($cache_key, $count, 'cache_mnc', $cache->expire);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Function to count all unread notifications of a user.
+ *
+ * @param object $user
+ *   Standard drupal user object.
+ *
+ * @return int
+ *   The number of unread notifications.
+ */
+function mnc_count_unread_notifications($user) {
+  // Build the view with needed configuration but dont execute it as usual.
+  $view = views_get_view(variable_get_value('mnc_view'));
+  $view->set_display(variable_get_value('mnc_view_display_notifications_unread'));
+
+  if (variable_get_value('mnc_include_anonymous_messages')) {
+    // Include anonymous user recipients messages.
+    $view->set_arguments(array('0+' . $user->uid));
+  }
+  else {
+    $view->set_arguments(array($user->uid));
+  }
+  $view->build(variable_get_value('mnc_view_display_notifications_unread'));
+  $view->query->add_where(0, 'message.notification', 1, '=');
+
+  return _mnc_get_total_items($view);
+}
+
+/**
+ * Execute given view with items per page set to 1 and get total rows option.
+ *
+ * @param object $view
+ *   The view to use for the counter
+ *
+ * @return int
+ *   Total rows
+ */
+function _mnc_get_total_items($view) {
+  // In order to get total rows from pager.
+  $view->get_total_rows = TRUE;
+  // Load only 1 item.
+  $view->items_per_page = 1;
+  $view->execute();
+  $total_items = $view->query->pager->get_total_items();
+  return $total_items;
+}
+
+/**
+ * Ajax callback to mark the passed messages via $_POST['message_id'] read.
+ */
+function mnc_ajax_mark_read() {
+  global $user;
+  if (isset($_POST['message_id'])) {
+    if (is_array($_POST['message_id'])) {
+      $message_ids = $_POST['message_id'];
+    }
+    else {
+      $message_ids = array($_POST['message_id']);
+    }
+  }
+  foreach ($message_ids as $message_id) {
+    mnc_read($user, $message_id);
+  }
+  $callback = variable_get_value('mnc_count_callback');
+  $return = array(
+    'unread' => call_user_func($callback, $user),
+  );
+  return $return;
+}
+
+/**
+ * Ajax callback to mark all messages read.
+ */
+function mnc_ajax_mark_all_read() {
+  global $user;
+  mnc_mark_all_read($user);
+  $callback = variable_get_value('mnc_count_callback');
+  $return = array(
+    'unread' => call_user_func($callback, $user),
+  );
+  return $return;
+}
+
+/**
+ * Ajax callback to mark all messages unread.
+ */
+function mnc_ajax_mark_all_unread() {
+  global $user;
+  mnc_mark_all_unread($user);
+  $callback = variable_get_value('mnc_count_callback');
+  $return = array(
+    'unread' => call_user_func($callback, $user),
+  );
+  return $return;
+}
+
+/**
+ * Ajax callback implementations using drupal_json_encode().
+ */
+function mnc_ajax_array_json_callback($array) {
+  drupal_json_output($array);
+}
+
+/**
+ * Define view modes for message.
+ *
+ * Implements hook_entity_info_alter().
+ */
+function mnc_entity_info_alter(&$entity_info) {
+  $entity_info['message']['view modes']['mnc'] = array(
+    'label' => t('Message Notification Center'),
+    'custom settings' => TRUE,
+  );
+}
+
+/**
+ * Implements hook_modernizr_info().
+ */
+function mnc_modernizr_info() {
+  $tests = array();
+  $tests[] = 'localstorage';
+  return $tests;
+}
+
+/**
+ * Update an associative array attached to an object by one of it's keys.
+ *
+ * @param $object object to work on
+ * @param $field string attribute used of object
+ * @param $key string key to be used of value array
+ * @param array $value
+ * @param $lang string
+ * @param $limit int
+ *  if 0 no limit will be applied.
+ * @param $insert if true and no value is found, insert the value
+ * @return count of updated values
+ */
+function mnc_update_array_value($object, $field, $key, array $value, $lang = LANGUAGE_NONE, $limit = 1, $insert = FALSE) {
+  $count = 0;
+  $found = false;
+  if (isset($object->{$field}[$lang]) && is_array($object->{$field}[$lang])) {
+    foreach ($object->{$field}[$lang] as &$sub) {
+      if (isset($sub[$key]) && $sub[$key] == $value[$key]) {
+        $found = true;
+        $sub = $value;
+        $count++;
+        if ($limit > 0 && $count >= $limit) {
+          return $count;
+        }
+      }
+    }
+  }
+  if ($insert && !$found) {
+    $object->{$field}[$lang][] = $value;
+  }
+  return $count;
+}
+
+function mnc_is_date_behaviour_field($field_name) {
+  $field = field_info_field($field_name);
+  return ($field['type'] == 'entityreference' && (array_key_exists('mnc_recipient_date', $field['settings']['handler_settings']['behaviors'])));
+}

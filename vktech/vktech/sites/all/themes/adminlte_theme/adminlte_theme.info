@@ -1,0 +1,67 @@
+name = Drupal Admin LTE Theme
+description = Admin LTE Template developed by Abdullah Almsaeed and Drupalized by Adigun Sherif A at <a href="http://reboundmedia.com.ng">Reboundmedia<a/>
+core = 7.x
+
+base theme = bootstrap
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Stylesheets
+;;;;;;;;;;;;;;;;;;;;;
+
+stylesheets[all][] = css/style.css
+stylesheets[all][] = bower_components/font-awesome/css/font-awesome.min.css
+stylesheets[all][] = bower_components/Ionicons/css/ionicons.min.css
+stylesheets[all][] = css/custom.css
+stylesheets[all][] = css/fonts.css
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Scripts
+;;;;;;;;;;;;;;;;;;;;;
+
+scripts[] = bootstrap/js/bootstrap.min.js
+scripts[] = js/adminlte_theme.min.js
+scripts[] = js/adminlte.js
+
+scripts[] = bootstrap/js/affix.js
+scripts[] = bootstrap/js/alert.js
+scripts[] = bootstrap/js/button.js
+scripts[] = bootstrap/js/carousel.js
+scripts[] = bootstrap/js/collapse.js
+scripts[] = bootstrap/js/dropdown.js
+scripts[] = bootstrap/js/modal.js
+scripts[] = bootstrap/js/tooltip.js
+scripts[] = bootstrap/js/popover.js
+scripts[] = bootstrap/js/scrollspy.js
+scripts[] = bootstrap/js/tab.js
+scripts[] = bootstrap/js/transition.js
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Regions
+;;;;;;;;;;;;;;;;;;;;;
+
+regions[header_right]   = Header Right
+regions[content_top]   = Content Top
+regions[sidebar_first]   = First sidebar
+regions[content_top_first]   = First Top Block
+regions[content_top_second]   = Second Top Block
+regions[content_top_third]   = Third Top Block
+regions[content_top_fourth]   = Fourth Top Block
+regions[help]           = Help
+regions[content]         = Content
+regions[sidebar_second]         = Second sidebar
+regions[control_sidebar]         = Control sidebar
+regions[content_left]         = Content Left
+regions[content_right]         = Content Right
+
+; Region Wells
+; --------------
+settings[bootstrap_region_well-sidebar_first] = ''
+; Disable the CDN provider so compiled source files can be used.
+settings[bootstrap_cdn] = ''
+settings[adminlte_theme_color] = 'skin-green'
+settings[adminlte_theme_views_fieldset] = '1'
+; Information added by Drupal.org packaging script on 2019-03-25
+version = "7.x-2.1"
+core = "7.x"
+project = "adminlte_theme"
+datestamp = "1553518988"

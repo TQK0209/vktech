@@ -1,0 +1,135 @@
+<?php
+/**
+ * @file
+ * A GRA4 module.
+ * This module embeds GRA4 social network right into your Drupal installation.
+ * Your website will have groups, blogs, likes, messaging, documents,
+ * and much, much more.
+ */
+
+define('GRA4_IN_GRA4', TRUE);
+
+/**
+ * Implements hook_help().
+ *
+ * Displays help and module information.
+ */
+function gra4_help($path, $arg) {
+  global $base_url;
+
+  $output = '';
+  switch ($path) {
+    case "admin/help#gra4":
+      $output = '<h3>' . t('Access Settings') . '</h3>';
+      $output .= '<p>' . t('When the module is activated, the menu item will be created automatically. This menu item will be inserted into the default menu, usually it is the "Navigation" You can edit menu item as you with, but the alias must remain gra4') . '</p>';
+      $output .= '<p><i>' . t('IMPORTANT! Please double check the Alias is set to gra4') . '</i></p>';
+      $output .= '<p>' . t('Content provided by GRA4 is about 1000 pixels wide, so we recommend to switch off the modules on the side bar for this menu item.') . '</p>';
+      $output .= '<p>' . t('Example:') . '</p>';
+      $output .= '<img src="' . $base_url . '/' . drupal_get_path('module', 'gra4') . '/vs.jpg"  title="' . t('Visibility settings') . '" />';
+      $output .= '<p>' . t('At this point you are done with the administration.') . '<br />';
+      $output .= t('Visit your website, make sure you are logged as the admin user.') . '<br />';
+      $output .= t('Click on the GRA4 menu item.') . '<br />';
+      $output .= t('On the GRA4 page (top right corner) you will the note telling you the website is initialized and connected to the GRA4 network.') . '<br />';
+      $output .= t('All done. Now your Drupal-powered website provide social network functionality to the users.') . '<br />';
+      $output .= t("Don\'t forget to change your nickname and avatar.") . '</p>';
+
+      $output .= '<h3>' . t('Customization') . '</h3>';
+      $output .= '<p>' . t('The GRA4 installation was designed on the standard Drupal templates.') . '<br />';
+      $output .= t('If you use custom templates, and want your social network to look a bit different, you may want change the styles of the social content. To do so, rename file modules/gra4/css/custom.css_ to the modules/gra4/css/custom.css and edit.') . '</p>';
+
+      $output .= '<h3>' . t('Support') . '</h3>';
+      $output .= '<p>' . t('Wiki:') . '<a href="http://gra4.com/wiki/">http://gra4.com/wiki/</a></p>';
+      $output .= '<p>' . t('Common:') . '<a href="http://gra4.com/groups/profile/94/gra4-webmasters">http://gra4.com/groups/profile/94/gra4-webmasters</a></p>';
+      $output .= '<p>' . t('Drupal:') . '<a href="http://gra4.com/groups/profile/99/gra4-webmasters-drupal">http://gra4.com/groups/profile/99/gra4-webmasters-drupal</a><br /';
+      $output .= t('(Check "Group Files" for the current version)') . '</p>';
+
+      break;
+  }
+
+  return $output;
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function gra4_block_info() {
+  $blocks['gra4'] = array(
+    'info' => t('GRA4 Social Network'),
+    'cache' => DRUPAL_CACHE_PER_ROLE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function gra4_menu() {
+  // This menu item will be created in the default menu, usually Navigation.
+  $items['gra4'] = array(
+    'title' => 'GRA4 Social Network',
+    'page callback' => 'gra4_get_gra4_content',
+    'access callback' => TRUE,
+    'expanded' => TRUE,
+  );
+
+  return $items;
+}
+
+
+/**
+ * Page callback: Display GRA4 content.
+ *
+ * We get GRA4 page content.
+ *
+ * @return string
+ *   A GRA4 content.
+ *
+ * @see gra4_menu()
+ */
+function gra4_get_gra4_content() {
+
+  $library_name = 'gra4';
+
+  // Try to load the library and check if that worked.
+  if (($library = libraries_load($library_name)) && !empty($library['loaded'])) {
+    $b_frame_needed = TRUE;
+    // GRA4FetchRemoteContent() - external GRA4 function.
+    // See GRA4 library.
+    $content = GRA4FetchRemoteContent($b_frame_needed);
+
+    if ($b_frame_needed === FALSE) {
+      ob_clean();
+      exit($content);
+    }
+
+    $start = '<div id="gra4_drupal">';
+    $end = '</div>';
+    $result = $start . $content . $end;
+  }
+  else {
+    cache_clear_all('gra4', 'cache_libraries');
+    $result = t('Please make sure the GRA4 library is installed in the libraries directory. GRA4 library can be found  !here. Place files in sites/all/libraries/gra4/ (or sites/example.com/libraries/gra4 if you have a multi-site installation).', array('!here' => l(t('here'), 'http://gra4.com/file/download/578674')));
+  }
+
+  return $result;
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function gra4_libraries_info() {
+  return array(
+    'gra4' => array(
+      'name' => 'GRA4',
+      'vendor url' => 'http://gra4.com/',
+      'download url' => 'http://gra4.com/file/download/578674',
+      'version' => '2.1',
+      'files' => array(
+        'php' => array(
+          'gra4_functions.php',
+        ),
+      ),
+    ),
+  );
+}
